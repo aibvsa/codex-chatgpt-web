@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sdlc-isolation:mode-result:1.0.0",
+  "title": "SDLC isolated mode result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","run_id","packet_sha256","mode_id","status","method_applied","findings","evidence","assumptions_and_unknowns","counterargument","next_test","confidence"],
+  "properties": {
+    "schema_version": {"const":"1.0.0"},
+    "run_id": {"type":"string","minLength":1},
+    "packet_sha256": {"type":["string","null"],"pattern":"^([a-f0-9]{64})?$"},
+    "mode_id": {"type":"string","minLength":1},
+    "status": {"enum":["complete","no_material_contribution","blocked","failed"]},
+    "method_applied": {"type":"string","minLength":1},
+    "findings": {"type":"array","items":{"type":"string"}},
+    "evidence": {"type":"array","items":{"type":"object","additionalProperties":false,"required":["claim","reference","kind"],"properties":{"claim":{"type":"string"},"reference":{"type":"string"},"kind":{"enum":["repository","official_source","log","test","user_context","inference"]}}}},
+    "assumptions_and_unknowns": {"type":"array","items":{"type":"string"}},
+    "counterargument": {"type":"string"},
+    "next_test": {"type":"string"},
+    "confidence": {"enum":["high","medium","low","not_assessable"]}
+  }
+}
