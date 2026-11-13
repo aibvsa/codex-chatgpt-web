@@ -17,28 +17,23 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($login)) {
 }
 $fork = "$login/codex-chatgpt-web"
 
+# The personal fork must already exist. This script publishes the prepared local branch to it.
+# Keeping fork creation separate avoids treating a 404 response as a PowerShell success path.
+$repoInfo = gh api "repos/$fork" --jq "{full_name: .full_name, parent: .parent.full_name}"
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($repoInfo)) {
+  throw "Personal fork $fork was not found. Create the fork first, then rerun this script."
+}
+$repoInfoObject = $repoInfo | ConvertFrom-Json
+if ($repoInfoObject.parent -ne $upstream) {
+  throw "$fork exists but its parent is not $upstream. Refusing to push."
+}
+
 # Ensure the local branch is isolated from upstream main.
 $current = git branch --show-current
 if ($current -ne $branch) {
   $exists = git branch --list $branch
   if ($exists) { git switch $branch } else { git switch -c $branch }
   if ($LASTEXITCODE -ne 0) { throw "Could not switch to local fork branch." }
-}
-
-# Check whether the personal fork already exists and is actually a fork of the requested upstream.
-$parent = gh api "repos/$fork" --jq ".parent.full_name" 2>$null
-if ($LASTEXITCODE -ne 0) {
-  # Disable prompts and cloning; the script configures the named remote itself.
-  $oldPromptDisabled = $env:GH_PROMPT_DISABLED
-  $env:GH_PROMPT_DISABLED = "1"
-  gh repo fork $upstream --clone=false
-  $forkExit = $LASTEXITCODE
-  $env:GH_PROMPT_DISABLED = $oldPromptDisabled
-  if ($forkExit -ne 0) { throw "GitHub could not create the fork." }
-  $parent = gh api "repos/$fork" --jq ".parent.full_name"
-}
-if ($parent -ne $upstream) {
-  throw "$fork exists but its parent is not $upstream. Refusing to push."
 }
 
 # Require a configured local author identity; never invent one.
@@ -64,7 +59,7 @@ git add .agents .codex SDLC-ISOLATION-ENGINE.md docs/sdlc-isolation-engine.md sc
 if ($LASTEXITCODE -ne 0) { throw "Could not stage the SDLC Isolation Engine files." }
 git diff --cached --quiet
 if ($LASTEXITCODE -eq 1) {
-  git commit -m "Add isolated SDLC thinking mode evaluation engine"
+  git commit -m "Maintain isolated SDLC evaluation tooling"
   if ($LASTEXITCODE -ne 0) { throw "Commit failed." }
 } elseif ($LASTEXITCODE -ne 0) {
   throw "Could not inspect staged changes."
